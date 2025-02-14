@@ -7,9 +7,8 @@ ARG ZIG=0.13.0
 ARG ZIG_MINISIG=RWSGOq2NVecA2UPNdBUZykf1CCb147pkmdtYxgb3Ti+JO/wCYvhbAb/U
 
 RUN apt-get update -yq && \
-    apt-get install -yq -y ca-certificates pkg-config libglib2.0-dev build-essential libssl-dev zlib1g-dev libbz2-dev \
-        libreadline-dev libsqlite3-dev wget curl llvm libncurses5-dev libncursesw5-dev gperf libexpat1-dev \
-        cmake clang-16 llvm-16 lld curl \
+    apt-get install -yq ca-certificates clang-16 cmake curl pkg-config libglib2.0-dev build-essential libssl-dev zlib1g-dev libbz2-dev \
+        libreadline-dev libsqlite3-dev wget llvm-16 lld libncurses5-dev libncursesw5-dev gperf libexpat1-dev \
         xz-utils tk-dev libffi-dev liblzma-dev python3-openssl git wget
 
 RUN wget https://www.python.org/ftp/python/3.12.0/Python-3.12.0.tgz
@@ -47,6 +46,6 @@ RUN zig build -Doptimize=ReleaseSafe
 
 RUN mv /src/v8-build/$ARCH-$OS/release/ninja/obj/zig/libc_v8.a /src/libc_v8.a
 
-FROM scratch AS artifact
+FROM scratch
 
 COPY --from=build /src/libc_v8.a /

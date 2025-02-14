@@ -14,77 +14,110 @@ env:
   ZIG_VERSION: 0.13.0
 
 jobs:
-  build-x86_64-linux:
-    strategy:
-      matrix:
-        os:
-        - system: ubuntu-22.04
-          env: [OS: linux, ARCH: x86_64 ]
-        - system: ubuntu-22.04-arm
-          env: [OS: linux, ARCH: aarch64 ]
-
-    runs-on: ${{ matrix.system }}
-    env: ${{ matrix.env }}
+  build-docker-image:
+    runs-on: ubuntu-latest
     steps:
-      - uses: mlugg/setup-zig@v1
-        with:
-          version: ${{ env.ZIG_VERSION }}
-
       - uses: actions/checkout@v4
         with:
           submodules: recursive
           fetch-depth: 0
 
-      - name: Read version
-        id: read-version
-        run: |
-          echo "version=`cat V8_REVISION`" >> "$GITHUB_OUTPUT"
-
-      - run: sudo apt-get install -yq libglib2.0-dev
-
-      - run: zig build get-tools
-      - run: zig build get-v8
-      - run: zig build -Doptimize=ReleaseSafe
-      - run: mv v8-build/${{ env.ARCH }}-${{ env.OS }}/release/ninja/obj/zig/libc_v8.a libc_v8_${{steps.read-version.outputs.version}}_${{ env.OS }}_${{ env.ARCH }}.a
-
-      - name: Upload the build
-        uses: ncipollo/release-action@v1
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
         with:
-          allowUpdates: true
-          artifacts: libc_v8_${{steps.read-version.outputs.version}}_${{ env.OS }}_${{ env.ARCH }}.a
+          platforms: all
 
-  build-aarch64-macos:
-    env:
-      OS: macos
-      ARCH: aarch64
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-    runs-on: macos-latest
-    steps:
-      - uses: mlugg/setup-zig@v1
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
         with:
-          version: ${{ env.ZIG_VERSION }}
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: actions/setup-python@v5
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
         with:
-          python-version: '3.11'
+          context: .
+          push: true
+          # List all target platforms
+          platforms: linux/amd64,linux/arm64,linux/arm/v7
+          # Tag format: ghcr.io/<owner>/<image-name>:<tag>
+          tags: ghcr.io/${{ github.repository_owner }}/my-multiplatform-image:latest
 
-      - uses: actions/checkout@v4
-        with:
-          submodules: recursive
-          fetch-depth: 0
-
-      - name: Read version
-        id: read-version
-        run: |
-          echo "version=`cat V8_REVISION`" >> "$GITHUB_OUTPUT"
-
-      - run: zig build get-tools
-      - run: zig build get-v8
-      - run: zig build -Doptimize=ReleaseSafe
-      - run: mv v8-build/${{ env.ARCH }}-${{ env.OS }}/release/ninja/obj/zig/libc_v8.a libc_v8_${{steps.read-version.outputs.version}}_${{ env.OS }}_${{ env.ARCH }}.a
-
-      - name: Upload the build
-        uses: ncipollo/release-action@v1
-        with:
-          allowUpdates: true
-          artifacts: libc_v8_${{steps.read-version.outputs.version}}_${{ env.OS }}_${{ env.ARCH }}.a
+#  build-x86_64-linux:
+#    strategy:
+#      matrix:
+#        os:
+#        - system: ubuntu-22.04
+#          env: [OS: linux, ARCH: x86_64 ]
+#        - system: ubuntu-22.04-arm
+#          env: [OS: linux, ARCH: aarch64 ]
+#
+#    runs-on: ${{ matrix.system }}
+#    env: ${{ matrix.env }}
+#    steps:
+#      - uses: mlugg/setup-zig@v1
+#        with:
+#          version: ${{ env.ZIG_VERSION }}
+#
+#      - uses: actions/checkout@v4
+#        with:
+#          submodules: recursive
+#          fetch-depth: 0
+#
+#      - name: Read version
+#        id: read-version
+#        run: |
+#          echo "version=`cat V8_REVISION`" >> "$GITHUB_OUTPUT"
+#
+#      - run: sudo apt-get install -yq libglib2.0-dev
+#
+#      - run: zig build get-tools
+#      - run: zig build get-v8
+#      - run: zig build -Doptimize=ReleaseSafe
+#      - run: mv v8-build/${{ env.ARCH }}-${{ env.OS }}/release/ninja/obj/zig/libc_v8.a libc_v8_${{steps.read-version.outputs.version}}_${{ env.OS }}_${{ env.ARCH }}.a
+#
+#      - name: Upload the build
+#        uses: ncipollo/release-action@v1
+#        with:
+#          allowUpdates: true
+#          artifacts: libc_v8_${{steps.read-version.outputs.version}}_${{ env.OS }}_${{ env.ARCH }}.a
+#
+#  build-aarch64-macos:
+#    env:
+#      OS: macos
+#      ARCH: aarch64
+#
+#    runs-on: macos-latest
+#    steps:
+#      - uses: mlugg/setup-zig@v1
+#        with:
+#          version: ${{ env.ZIG_VERSION }}
+#
+#      - uses: actions/setup-python@v5
+#        with:
+#          python-version: '3.11'
+#
+#      - uses: actions/checkout@v4
+#        with:
+#          submodules: recursive
+#          fetch-depth: 0
+#
+#      - name: Read version
+#        id: read-version
+#        run: |
+#          echo "version=`cat V8_REVISION`" >> "$GITHUB_OUTPUT"
+#
+#      - run: zig build get-tools
+#      - run: zig build get-v8
+#      - run: zig build -Doptimize=ReleaseSafe
+#      - run: mv v8-build/${{ env.ARCH }}-${{ env.OS }}/release/ninja/obj/zig/libc_v8.a libc_v8_${{steps.read-version.outputs.version}}_${{ env.OS }}_${{ env.ARCH }}.a
+#
+#      - name: Upload the build
+#        uses: ncipollo/release-action@v1
+#        with:
+#          allowUpdates: true
+#          artifacts: libc_v8_${{steps.read-version.outputs.version}}_${{ env.OS }}_${{ env.ARCH }}.a
