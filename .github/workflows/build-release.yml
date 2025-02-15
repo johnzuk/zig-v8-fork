@@ -43,7 +43,7 @@ jobs:
           context: .
           push: true
           # List all target platforms
-          platforms: linux/amd64,linux/arm64,linux/arm/v7
+          platforms: linux/amd64,linux/arm64
           # Tag format: ghcr.io/<owner>/<image-name>:<tag>
           tags: ghcr.io/${{ github.repository_owner }}/my-multiplatform-image:latest
 
